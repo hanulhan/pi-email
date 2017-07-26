@@ -100,6 +100,8 @@ main (int argc, char **argv)
   int c;
   enum notify_flags notify = Notify_NOTSET;
 
+  printf("\nDEBUG:::::mail-file:main");
+  
   /* This program sends only one message at a time.  Create an SMTP
      session and add a message to it. */
   auth_client_init ();
@@ -188,6 +190,7 @@ main (int argc, char **argv)
       exit (2);
     }
 
+    printf("\nDEBUG:::::mail-file:main");
   /* NB.  libESMTP sets timeouts as it progresses through the protocol.
      In addition the remote server might close its socket on a timeout.
      Consequently libESMTP may sometimes try to write to a socket with
@@ -307,9 +310,10 @@ print_recipient_status (smtp_recipient_t recipient,
 			const char *mailbox, void *arg unused)
 {
   const smtp_status_t *status;
+  printf("\nDEBUG:::::mail-file:print_recipient_status()");
 
   status = smtp_recipient_status (recipient);
-  printf ("%s: %d %s", mailbox, status->code, status->text);
+  printf ("\n%s: %d %s", mailbox, status->code, status->text);
 }
 
 /* Callback function to read the message from a file.  Since libESMTP
@@ -333,6 +337,7 @@ readlinefp_cb (void **buf, int *len, void *arg)
 {
   int octets;
 
+  printf("\nDEBUG:::::mail-file:readlinefp_cb()");
   if (*buf == NULL)
     *buf = malloc (BUFLEN);
 
@@ -364,6 +369,7 @@ monitor_cb (const char *buf, int buflen, int writing, void *arg)
 {
   FILE *fp = arg;
 
+  printf("\nDEBUG:::::mail-file:monitor_cb()");
   if (writing == SMTP_CB_HEADERS)
     {
       fputs ("H: ", fp);
@@ -371,13 +377,52 @@ monitor_cb (const char *buf, int buflen, int writing, void *arg)
       return;
     }
 
- fputs (writing ? "C: " : "S: ", fp);
+ fputs (writing ? "\nC: " : "\nS: ", fp);
  fwrite (buf, 1, buflen, fp);
  if (buf[buflen - 1] != '\n')
    putc ('\n', fp);
 }
 
 /* Callback to request user/password info.  Not thread safe. */
+//int
+//authinteract (auth_client_request_t request, char **result, int fields,
+//              void *arg unused)
+//{
+//  char prompt[64];
+//  static char resp[512];
+//  char *p, *rp;
+//  int i, n, tty;
+//  printf("\nDEBUG:::::mail-file:authinteract()");
+//  rp = resp;
+//  printf("\nDEBUG:::::mail-file:authinteract() Anzahl fields: %d", fields);
+//  for (i = 0; i < fields; i++)
+//    {
+//      printf("\nDEBUG:::::mail-file:authinteract() request[%d].prompt: %s", i, request[i].prompt);
+//      printf("\nDEBUG:::::mail-file:authinteract() request[%d].flags: %u", i, request[i].flags);
+//      n = snprintf (prompt, sizeof prompt, "%s%s: ", request[i].prompt,
+//		    (request[i].flags & AUTH_CLEARTEXT) ? " (not encrypted)"
+//		    					: "");
+//      if (request[i].flags & AUTH_PASS)
+//	result[i] = getpass (prompt);
+//      else
+//	{
+//	  tty = open ("/dev/tty", O_RDWR);
+//	  write (tty, prompt, n);
+//	  n = read (tty, rp, sizeof resp - (rp - resp));
+//	  close (tty);
+//	  p = rp + n;
+//	  while (isspace (p[-1]))
+//	    p--;
+//	  *p++ = '\0';
+//	  result[i] = rp;
+//	  rp = p;
+//	}
+//      
+//        printf("\nDEBUG:::::mail-file:authinteract() result[%d]: %s", i, result[i]);
+//    }
+//  return 1;
+//}
+
 int
 authinteract (auth_client_request_t request, char **result, int fields,
               void *arg unused)
@@ -386,29 +431,13 @@ authinteract (auth_client_request_t request, char **result, int fields,
   static char resp[512];
   char *p, *rp;
   int i, n, tty;
-
+  printf("\nDEBUG:::::mail-file:authinteract()");
   rp = resp;
-  for (i = 0; i < fields; i++)
-    {
-      n = snprintf (prompt, sizeof prompt, "%s%s: ", request[i].prompt,
-		    (request[i].flags & AUTH_CLEARTEXT) ? " (not encrypted)"
-		    					: "");
-      if (request[i].flags & AUTH_PASS)
-	result[i] = getpass (prompt);
-      else
-	{
-	  tty = open ("/dev/tty", O_RDWR);
-	  write (tty, prompt, n);
-	  n = read (tty, rp, sizeof resp - (rp - resp));
-	  close (tty);
-	  p = rp + n;
-	  while (isspace (p[-1]))
-	    p--;
-	  *p++ = '\0';
-	  result[i] = rp;
-	  rp = p;
-	}
-    }
+  printf("\nDEBUG:::::mail-file:authinteract() Anzahl fields: %d", fields);
+  result[0] = "uhansen01";
+  result[1] = "ava030374lon_";
+  
+
   return 1;
 }
 
@@ -418,6 +447,7 @@ tlsinteract (char *buf, int buflen, int rwflag unused, void *arg unused)
   char *pw;
   int len;
 
+  printf("\nDEBUG::tslinteract()");
   pw = getpass ("certificate password");
   len = strlen (pw);
   if (len + 1 > buflen)
@@ -429,6 +459,8 @@ int
 handle_invalid_peer_certificate(long vfy_result)
 {
   const char *k ="rare error";
+  
+  printf("\nDEBUG::handle_invalid_peer_certificate()");
   switch(vfy_result) {
   case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
     k="X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT"; break;
@@ -485,7 +517,7 @@ handle_invalid_peer_certificate(long vfy_result)
   case X509_V_ERR_CERT_REJECTED:
     k="X509_V_ERR_CERT_REJECTED"; break;
   }
-  printf("SMTP_EV_INVALID_PEER_CERTIFICATE: %ld: %s\n", vfy_result, k);
+  printf("\nSMTP_EV_INVALID_PEER_CERTIFICATE: %ld: %s\n", vfy_result, k);
   return 1; /* Accept the problem */
 }
 
@@ -494,6 +526,7 @@ void event_cb (smtp_session_t session, int event_no, void *arg,...)
   va_list alist;
   int *ok;
 
+  printf("\nDEBUG::event_cb()");
   va_start(alist, arg);
   switch(event_no) {
   case SMTP_EV_CONNECT: 
@@ -505,11 +538,11 @@ void event_cb (smtp_session_t session, int event_no, void *arg,...)
   case SMTP_EV_WEAK_CIPHER: {
     int bits;
     bits = va_arg(alist, long); ok = va_arg(alist, int*);
-    printf("SMTP_EV_WEAK_CIPHER, bits=%d - accepted.\n", bits);
+    printf("\nSMTP_EV_WEAK_CIPHER, bits=%d - accepted.\n", bits);
     *ok = 1; break;
   }
   case SMTP_EV_STARTTLS_OK:
-    puts("SMTP_EV_STARTTLS_OK - TLS started here."); break;
+    puts("\nSMTP_EV_STARTTLS_OK - TLS started here."); break;
   case SMTP_EV_INVALID_PEER_CERTIFICATE: {
     long vfy_result;
     vfy_result = va_arg(alist, long); ok = va_arg(alist, int*);
@@ -518,21 +551,21 @@ void event_cb (smtp_session_t session, int event_no, void *arg,...)
   }
   case SMTP_EV_NO_PEER_CERTIFICATE: {
     ok = va_arg(alist, int*); 
-    puts("SMTP_EV_NO_PEER_CERTIFICATE - accepted.");
+    puts("\nSMTP_EV_NO_PEER_CERTIFICATE - accepted.");
     *ok = 1; break;
   }
   case SMTP_EV_WRONG_PEER_CERTIFICATE: {
     ok = va_arg(alist, int*);
-    puts("SMTP_EV_WRONG_PEER_CERTIFICATE - accepted.");
+    puts("\nSMTP_EV_WRONG_PEER_CERTIFICATE - accepted.");
     *ok = 1; break;
   }
   case SMTP_EV_NO_CLIENT_CERTIFICATE: {
     ok = va_arg(alist, int*); 
-    puts("SMTP_EV_NO_CLIENT_CERTIFICATE - accepted.");
+    puts("\nSMTP_EV_NO_CLIENT_CERTIFICATE - accepted.");
     *ok = 1; break;
   }
   default:
-    printf("Got event: %d - ignored.\n", event_no);
+    printf("\nGot event: %d - ignored.\n", event_no);
   }
   va_end(alist);
 }
@@ -540,7 +573,8 @@ void event_cb (smtp_session_t session, int event_no, void *arg,...)
 void
 usage (void)
 {
-  fputs ("Copyright (C) 2001  Brian Stafford <brian@stafford.uklinux.net>\n"
+    printf("\nDEBUG::usage()");
+    fputs ("Copyright (C) 2001  Brian Stafford <brian@stafford.uklinux.net>\n"
 	 "\n"
 	 "This program is free software; you can redistribute it and/or modify\n"
 	 "it under the terms of the GNU General Public License as published\n"
@@ -583,8 +617,9 @@ void
 version (void)
 {
   char buf[32];
+  printf("\nDEBUG::version()");
 
   smtp_version (buf, sizeof buf, 0);
-  printf ("libESMTP version %s\n", buf);
+  printf ("\nlibESMTP version %s\n", buf);
 }
 
