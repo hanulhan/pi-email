@@ -41,8 +41,6 @@
 #include <stdarg.h>
 
 #include <openssl/ssl.h>
-#include <auth-client.h>
-#include <libesmtp.h>
 
 #if !defined (__GNUC__) || __GNUC__ < 2
 # define __attribute__(x)

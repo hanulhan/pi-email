@@ -1,15 +1,52 @@
+NAME            = pi-email
 
-OBJECTS = mail-file.o main.o
-LIBESMTP = `libesmtp-config --libs`
+
+###################################################################################
+# PROJECT FILES
+###################################################################################
+
+FILES=         main             \
+               mail-file
+
+###################################################################################
+# PROJECT SETTINGS
+###################################################################################
+PROJ_DIR	= .
+INCLUDE_PATH	= ./inc
+
+OBJECTS		= $(foreach file,$(FILES),$(addsuffix .o,$(file)))
+OBJ_TMP 	= $(foreach file,$(OBJECTS),obj/$(file))
+OBJ_LIST	= $(subst $(SPACE),$(COMMA),$(OBJ_TMP))
+
+LL_OPT	:= `libesmtp-config --libs`
 CFLAGS := $(CFLAGS) -std=c99 -pedantic -O2 -g -W -Wall `libesmtp-config --cflags`
 
-all: mail-file
 
-#mail-file-a: $(OBJECTS)
-#	$(CC) -g -static $(OBJECTS) $(LIBESMTP) -o mail-file-a
+VPATH = src obj
 
-mail-file: $(OBJECTS)
-	$(CC) -g $(OBJECTS) $(LIBESMTP) -o mail-file
+.PHONY : clean all executable
 
+all: executable
+
+
+###################################################################################
+#  C Compiler - Code generation
+###################################################################################
+
+%.o: %.c
+		$(CC) $(CFLAGS) -c -I $(INCLUDE_PATH) -o obj/$@  $<
+
+executable:	$(OBJECTS)
+		$(CC) -g $(OBJ_LIST) $(LL_OPT) -o $(NAME)
+
+
+test:		
+		echo "CC: $(CC)"
+		echo "CFLAGS: $(CFLAGS)"
+###################################################################################
+#  clean
+###################################################################################
 clean:
-	rm -f *.o core mail-file-a mail-file-so mail-file
+	rm -f obj/*.o
+	rm -f $(NAME)
+	rm -f core
