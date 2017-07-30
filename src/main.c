@@ -30,32 +30,29 @@
 
 #include <openssl/ssl.h>
 #define UNUSED(x) (void)(x)
-#define MAIL_HEADER "Return-Path: <info@familie-hansen.name>\nMIME-Version: 1.0\nContent-Type: text/plain;\n  charset=iso-8859-1\nContent-Transfer-Encoding: 7bit\n\n"
+#define MAIL_HEADER_1 "Return-Path: <"
+#define MAIL_HEADER_2 ">\nMIME-Version: 1.0\nContent-Type: text/plain;\n  charset=iso-8859-1\nContent-Transfer-Encoding: 7bit\n\n"
 
-#define MESSAGE_TEXT "Hallo Test 7"
+#define MESSAGE_TEXT "Hallo Test 8"
 #define HOST "smtp.googlemail.com"
 #define FROM "uhansen01@googlemail.com"
-#define SUBJECT "Test mail 7"
+#define SUBJECT "Test mail 8"
 #define RECIPIENT "info@familie-hansen.name"
 
 #define NO_CRLF  1
 
 
+
+
 void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, const char *sSubject, const char *sMsgText);
 
-
 int main(int argc, char **argv) {
-    char MessageText[1024];
     UNUSED(argc);
     UNUSED(argv);
-    strcpy((char *) MessageText, (const char *) MAIL_HEADER);
-    strcat((char *) MessageText, (const char *) MESSAGE_TEXT);
-    
-    sendMail(HOST, FROM, RECIPIENT, SUBJECT, MessageText);
+
+    sendMail(HOST, FROM, RECIPIENT, SUBJECT, MESSAGE_TEXT);
     exit(0);
 }
-
-
 
 void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, const char *sSubject, const char *sMsgText) {
     smtp_session_t session;
@@ -70,12 +67,31 @@ void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, cons
     char *file;
     FILE *fp;
     enum notify_flags notify = Notify_NOTSET;
+    char *sMessage = NULL;
 
     printf("\n#################################################################");
     printf("\nDEBUG::main:sendMail()--> Start");
     printf("\n#################################################################");
     file = "MessageText.txt";
-    
+
+
+    // Calculate Buffer for MessageText
+    size_t bufLen = strlen(MAIL_HEADER_1) + strlen(MAIL_HEADER_2) + strlen(sRecipient) + strlen(sMsgText);
+    printf("\nRequired Buffer len: %d", (int) bufLen);
+
+    sMessage = (char *) malloc((int) bufLen);
+
+    if (sMessage == 0) {
+        printf("\nError allocating memory for sMessage");
+        exit(1);
+    }
+
+    strcpy((char *) sMessage, (const char *) MAIL_HEADER_1);
+    strcat((char *) sMessage, (const char *) sRecipient);
+    strcat((char *) sMessage, (const char *) MAIL_HEADER_2);
+    strcat((char *) sMessage, (const char *) sMsgText);
+
+
     /* This program sends only one message at a time.  Create an SMTP
        session and add a message to it. */
     auth_client_init();
@@ -86,48 +102,62 @@ void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, cons
     printf("\nDEBUG::main:main()--> smtp_set_monitorcb");
     smtp_set_monitorcb(session, monitor_cb, stdout, 1);
 
-    //    case 'n':
-    //    if (strcmp(optarg, "success") == 0)
-    //        notify |= Notify_SUCCESS;
-    //    else if (strcmp(optarg, "failure") == 0)
-    //        notify |= Notify_FAILURE;
-    //    else if (strcmp(optarg, "delay") == 0)
-    //        notify |= Notify_DELAY;
-    //    else if (strcmp(optarg, "never") == 0)
-    //        notify = Notify_NEVER;
-
+#if 0
+    //  Option -n
+    if (strcmp(optarg, "success") == 0)
+        notify |= Notify_SUCCESS;
+    else if (strcmp(optarg, "failure") == 0)
+        notify |= Notify_FAILURE;
+    else if (strcmp(optarg, "delay") == 0)
+        notify |= Notify_DELAY;
+    else if (strcmp(optarg, "never") == 0)
+        notify = Notify_NEVER;
+#endif
+#if 0
     /* Request MDN sent to the same address as the reverse path */
-    //  case 'd':
-    //                printf("\nDEBUG::main:main()--> smtp_set_header");
-    //                smtp_set_header(message, "Disposition-Notification-To", NULL, NULL);
+    // Option -d
+    printf("\nDEBUG::main:main()--> smtp_set_header");
+    smtp_set_header(message, "Disposition-Notification-To", NULL, NULL);
+#endif
 
 
-    //            case 't':
+#if 1
+    // Option -t
     printf("\nDEBUG::main:main()--> smtp_starttls_enable");
     smtp_starttls_enable(session, Starttls_ENABLED);
+#endif
 
+#if 0
+    // Option -Tase 'T':
+    printf("\nDEBUG::main:main()--> smtp_starttls_enable");
+    smtp_starttls_enable(session, Starttls_REQUIRED);
+#endif
 
-    //    case 'T':
-    //    printf("\nDEBUG::main:main()--> smtp_starttls_enable");
-    //    smtp_starttls_enable(session, Starttls_REQUIRED);
+#if 0
+    // Option -l
+    noauth = 1;
+#endif
 
-    //    case 1:
-    //    noauth = 1;
+#if 0
+    //    Option -TO
+    printf("\nDEBUG::main:main()--> smtp_set_header(To: %s)", optarg);
+    smtp_set_header(message, "To", NULL, optarg);
+    to_cc_bcc = 1;
+#endif
 
-//    case TO:
-//    printf("\nDEBUG::main:main()--> smtp_set_header(To: %s)", optarg);
-//    smtp_set_header(message, "To", NULL, optarg);
-//    to_cc_bcc = 1;
+#if 0
+    // Option -CC
+    printf("\nDEBUG::main:main()--> smtp_set_header(Cc: %s)", optarg);
+    smtp_set_header(message, "Cc", NULL, optarg);
+    to_cc_bcc = 1;
+#endif
 
-//    case CC:
-//    printf("\nDEBUG::main:main()--> smtp_set_header(Cc: %s)", optarg);
-//    smtp_set_header(message, "Cc", NULL, optarg);
-//    to_cc_bcc = 1;
-
-//    case BCC:
-//    printf("\nDEBUG::main:main()--> smtp_set_header(Bcc: %s)", optarg);
-//    smtp_set_header(message, "Bcc", NULL, optarg);
-//    to_cc_bcc = 1;
+#if 0
+    // Option BCC
+    printf("\nDEBUG::main:main()--> smtp_set_header(Bcc: %s)", optarg);
+    smtp_set_header(message, "Bcc", NULL, optarg);
+    to_cc_bcc = 1;
+#endif
 
 
 
@@ -199,8 +229,8 @@ void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, cons
 
     fprintf(fp, sMsgText);
     fclose(fp);
-    
-    
+
+
     if (strcmp(file, "-") == 0)
         fp = stdin;
     else if ((fp = fopen(file, "r")) == NULL) {
@@ -241,6 +271,7 @@ void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, cons
     auth_destroy_context(authctx);
     fclose(fp);
     auth_client_exit();
+    free(sMessage);
 }
 
 
