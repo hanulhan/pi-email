@@ -1,3 +1,4 @@
-mail-file
+pi-email
+MessageText.txt
 obj/*.o
 nbproject
