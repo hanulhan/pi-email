@@ -225,7 +225,7 @@ void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, cons
     fp = fopen(file, "w");
 
 //    fprintf(fp, sMsgText);
-    fputs(sMsgText, fp);
+    fputs(sMessage, fp);
     fclose(fp);
 
 
