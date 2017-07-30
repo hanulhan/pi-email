@@ -29,108 +29,163 @@
 #include <stdarg.h>
 
 #include <openssl/ssl.h>
-#define UNUSED(x) (void)(x)
+
 #define MAIL_HEADER "Return-Path: <info@familie-hansen.name>\nMIME-Version: 1.0\nContent-Type: text/plain;\n  charset=iso-8859-1\nContent-Transfer-Encoding: 7bit\n\n"
 
-#define MESSAGE_TEXT "Hallo Test 7"
-#define HOST "smtp.googlemail.com"
-#define FROM "uhansen01@googlemail.com"
-#define SUBJECT "Test mail 7"
-#define RECIPIENT "info@familie-hansen.name"
+#define MESSAGE_TEXT "Hallo Test"
 
 #define NO_CRLF  1
 
 
-void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, const char *sSubject, const char *sMsgText);
+void sendMail(char *sHost, char *sFrom, char *sRecipient, char *sSubject, char *sText);
+
+enum {
+    TO = 10, CC, BCC,
+};
+
+struct option longopts[] = {
+    { "help", no_argument, NULL, '?',},
+    { "version", no_argument, NULL, 'v',},
+    { "host", required_argument, NULL, 'h',},
+    { "monitor", no_argument, NULL, 'm',},
+    { "crlf", no_argument, NULL, 'c',},
+    { "notify", required_argument, NULL, 'n',},
+    { "mdn", no_argument, NULL, 'd',},
+    { "subject", required_argument, NULL, 's',},
+    { "reverse-path", required_argument, NULL, 'f',},
+    { "tls", no_argument, NULL, 't',},
+    { "require-tls", no_argument, NULL, 'T',},
+    { "noauth", no_argument, NULL, 1,},
+
+    { "to", required_argument, NULL, TO,},
+    { "cc", required_argument, NULL, CC,},
+    { "bcc", required_argument, NULL, BCC,},
+
+    { NULL, 0, NULL, 0,},
+};
 
 
-int main(int argc, char **argv) {
-    char MessageText[1024];
-    UNUSED(argc);
-    UNUSED(argv);
-    strcpy((char *) MessageText, (const char *) MAIL_HEADER);
-    strcat((char *) MessageText, (const char *) MESSAGE_TEXT);
-    
-    sendMail(HOST, FROM, RECIPIENT, SUBJECT, MessageText);
-    exit(0);
-}
 
 
-
-void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, const char *sSubject, const char *sMsgText) {
+int
+main(int argc, char **argv) {
     smtp_session_t session;
     smtp_message_t message;
     smtp_recipient_t recipient;
     auth_context_t authctx;
     const smtp_status_t *status;
     struct sigaction sa;
+    char *host = NULL;
+    char *from = NULL;
+    char *subject = NULL;
     int nocrlf = 0;
     int noauth = 0;
     int to_cc_bcc = 0;
     char *file;
     FILE *fp;
+    int c;
     enum notify_flags notify = Notify_NOTSET;
+    char MessageText[1024];
 
     printf("\n#################################################################");
-    printf("\nDEBUG::main:sendMail()--> Start");
+    printf("\nDEBUG::main:main()--> Start");
     printf("\n#################################################################");
-    file = "MessageText.txt";
-    
+
     /* This program sends only one message at a time.  Create an SMTP
        session and add a message to it. */
     auth_client_init();
     session = smtp_create_session();
     message = smtp_add_message(session);
 
-    nocrlf = NO_CRLF;
-    printf("\nDEBUG::main:main()--> smtp_set_monitorcb");
-    smtp_set_monitorcb(session, monitor_cb, stdout, 1);
+    while ((c = getopt_long(argc, argv, "dmch:f:s:n:tTv",
+            longopts, NULL)) != EOF)
+        switch (c) {
+            case 'h':
+                printf("\nDEBUG::main:main()--> host: %s", optarg);
+                host = optarg;
+                break;
 
-    //    case 'n':
-    //    if (strcmp(optarg, "success") == 0)
-    //        notify |= Notify_SUCCESS;
-    //    else if (strcmp(optarg, "failure") == 0)
-    //        notify |= Notify_FAILURE;
-    //    else if (strcmp(optarg, "delay") == 0)
-    //        notify |= Notify_DELAY;
-    //    else if (strcmp(optarg, "never") == 0)
-    //        notify = Notify_NEVER;
+            case 'f':
+                printf("\nDEBUG::main:main()--> from: %s", optarg);
+                from = optarg;
+                break;
 
-    /* Request MDN sent to the same address as the reverse path */
-    //  case 'd':
-    //                printf("\nDEBUG::main:main()--> smtp_set_header");
-    //                smtp_set_header(message, "Disposition-Notification-To", NULL, NULL);
+            case 's':
+                printf("\nDEBUG::main:main()--> subject: %s", optarg);
+                subject = optarg;
+                break;
 
+            case 'c':
+                nocrlf = 1;
+                break;
 
-    //            case 't':
-    printf("\nDEBUG::main:main()--> smtp_starttls_enable");
-    smtp_starttls_enable(session, Starttls_ENABLED);
+            case 'm':
+                printf("\nDEBUG::main:main()--> smtp_set_monitorcb");
+                smtp_set_monitorcb(session, monitor_cb, stdout, 1);
+                break;
 
+            case 'n':
+                if (strcmp(optarg, "success") == 0)
+                    notify |= Notify_SUCCESS;
+                else if (strcmp(optarg, "failure") == 0)
+                    notify |= Notify_FAILURE;
+                else if (strcmp(optarg, "delay") == 0)
+                    notify |= Notify_DELAY;
+                else if (strcmp(optarg, "never") == 0)
+                    notify = Notify_NEVER;
+                break;
 
-    //    case 'T':
-    //    printf("\nDEBUG::main:main()--> smtp_starttls_enable");
-    //    smtp_starttls_enable(session, Starttls_REQUIRED);
+            case 'd':
+                /* Request MDN sent to the same address as the reverse path */
+                printf("\nDEBUG::main:main()--> smtp_set_header");
+                smtp_set_header(message, "Disposition-Notification-To", NULL, NULL);
+                break;
 
-    //    case 1:
-    //    noauth = 1;
+            case 't':
+                printf("\nDEBUG::main:main()--> smtp_starttls_enable");
+                smtp_starttls_enable(session, Starttls_ENABLED);
+                break;
 
-//    case TO:
-//    printf("\nDEBUG::main:main()--> smtp_set_header(To: %s)", optarg);
-//    smtp_set_header(message, "To", NULL, optarg);
-//    to_cc_bcc = 1;
+            case 'T':
+                printf("\nDEBUG::main:main()--> smtp_starttls_enable");
+                smtp_starttls_enable(session, Starttls_REQUIRED);
+                break;
 
-//    case CC:
-//    printf("\nDEBUG::main:main()--> smtp_set_header(Cc: %s)", optarg);
-//    smtp_set_header(message, "Cc", NULL, optarg);
-//    to_cc_bcc = 1;
+            case 'v':
+                version();
+                exit(2);
 
-//    case BCC:
-//    printf("\nDEBUG::main:main()--> smtp_set_header(Bcc: %s)", optarg);
-//    smtp_set_header(message, "Bcc", NULL, optarg);
-//    to_cc_bcc = 1;
+            case 1:
+                noauth = 1;
+                break;
 
+            case TO:
+                printf("\nDEBUG::main:main()--> smtp_set_header(To: %s)", optarg);
+                smtp_set_header(message, "To", NULL, optarg);
+                to_cc_bcc = 1;
+                break;
+            case CC:
+                printf("\nDEBUG::main:main()--> smtp_set_header(Cc: %s)", optarg);
+                smtp_set_header(message, "Cc", NULL, optarg);
+                to_cc_bcc = 1;
+                break;
+            case BCC:
+                printf("\nDEBUG::main:main()--> smtp_set_header(Bcc: %s)", optarg);
+                smtp_set_header(message, "Bcc", NULL, optarg);
+                to_cc_bcc = 1;
+                break;
 
+            default:
+                usage();
+                exit(2);
+        }
 
+    /* At least two more arguments are needed.
+     */
+    if (optind > argc - 2) {
+        usage();
+        exit(2);
+    }
 
     /* NB.  libESMTP sets timeouts as it progresses through the protocol.
        In addition the remote server might close its socket on a timeout.
@@ -145,8 +200,8 @@ void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, cons
     /* Set the host running the SMTP server.  LibESMTP has a default port
        number of 587, however this is not widely deployed so the port
        is specified as 25 along with the default MTA host. */
-    printf("\nDEBUG::main:main()--> smtp_set_server(%s)", sHost ? sHost : "localhost:25");
-    smtp_set_server(session, sHost ? sHost : "localhost:25");
+    printf("\nDEBUG::main:main()--> smtp_set_server(%s)", host ? host : "localhost:25");
+    smtp_set_server(session, host ? host : "localhost:25");
 
     /* Do what's needed at application level to use authentication.
      */
@@ -166,7 +221,7 @@ void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, cons
 
     /* Set the reverse path for the mail envelope.  (NULL is ok)
      */
-    smtp_set_reverse_path(message, sFrom);
+    smtp_set_reverse_path(message, from);
 
 #if 0
     /* The message-id is OPTIONAL but SHOULD be present.  By default
@@ -186,21 +241,24 @@ void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, cons
 
     /* Set the Subject: header.  For no reason, we want the supplied subject
        to override any subject line in the message headers. */
-    if (sSubject != NULL) {
-        smtp_set_header(message, "Subject", sSubject);
+    if (subject != NULL) {
+        smtp_set_header(message, "Subject", subject);
         smtp_set_header_option(message, "Subject", Hdr_OVERRIDE, 1);
     }
 
     /* Open the message file and set the callback to read it.
      */
+    //    file = argv[optind++];
+    file = "MessageText.txt";
+    strcpy((char *) MessageText, (const char *) MAIL_HEADER);
+    strcat((char *) MessageText, (const char *) MESSAGE_TEXT);
 
     printf("\nDEBUG::main:main()--> Create a file");
     fp = fopen(file, "w");
 
-    fprintf(fp, sMsgText);
+    fprintf(fp, MessageText);
     fclose(fp);
-    
-    
+
     if (strcmp(file, "-") == 0)
         fp = stdin;
     else if ((fp = fopen(file, "r")) == NULL) {
@@ -212,12 +270,15 @@ void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, cons
     else
         smtp_set_message_fp(message, fp);
 
+    /* Add remaining program arguments as message recipients.
+     */
+    while (optind < argc) {
+        recipient = smtp_add_recipient(message, argv[optind++]);
 
-    recipient = smtp_add_recipient(message, (const char *) sRecipient);
-
-    /* Recipient options set here */
-    if (notify != Notify_NOTSET)
-        smtp_dsn_set_notify(recipient, notify);
+        /* Recipient options set here */
+        if (notify != Notify_NOTSET)
+            smtp_dsn_set_notify(recipient, notify);
+    }
 
     /* Initiate a connection to the SMTP server and transfer the
        message. */
@@ -241,7 +302,6 @@ void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, cons
     auth_destroy_context(authctx);
     fclose(fp);
     auth_client_exit();
+    exit(0);
 }
-
-
 
