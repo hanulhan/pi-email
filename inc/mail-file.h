@@ -22,10 +22,11 @@ extern "C" {
 #include <auth-client.h>
 #include <libesmtp.h>
 
+    #define NO_CRLF  1
 
 
 
-
+    void sendMail(const char *sHost, const char *sFrom, const char *sRecipient, const char *sSubject, const char *sMsgText);
     const char *readlinefp_cb(void **buf, int *len, void *arg);
     void monitor_cb(const char *buf, int buflen, int writing, void *arg);
     void print_recipient_status(smtp_recipient_t recipient, const char *mailbox, void *arg);
