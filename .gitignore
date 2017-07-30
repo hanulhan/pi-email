@@ -1,5 +1,3 @@
 mail-file
-*.o
+obj/*.o
 nbproject
-mail-file-a
-mail-file-so

@@ -30,9 +30,9 @@
 
 #include <openssl/ssl.h>
 
+#define MAIL_HEADER "Return-Path: <info@familie-hansen.name>\nMIME-Version: 1.0\nContent-Type: text/plain;\n  charset=iso-8859-1\nContent-Transfer-Encoding: 7bit\n\n"
 
-
-
+#define MESSAGE_TEXT "Hallo Test"
 
 enum { TO = 10, CC, BCC, };
 
@@ -57,6 +57,10 @@ struct option longopts[] = {
     { NULL, 0, NULL, 0,},
 };
 
+
+//int sendMail(char *host, char *from, char *subject, )  {
+//    
+//}
 int
 main(int argc, char **argv) {
     smtp_session_t session;
@@ -75,8 +79,11 @@ main(int argc, char **argv) {
     FILE *fp;
     int c;
     enum notify_flags notify = Notify_NOTSET;
+    char MessageText[1024];
 
-    printf("\nDEBUG:::::mail-file:main");
+    printf("\n#################################################################");
+    printf("\nDEBUG::main:main()--> Start");
+    printf("\n#################################################################");
 
     /* This program sends only one message at a time.  Create an SMTP
        session and add a message to it. */
@@ -88,14 +95,17 @@ main(int argc, char **argv) {
             longopts, NULL)) != EOF)
         switch (c) {
             case 'h':
+                printf("\nDEBUG::main:main()--> host: %s", optarg);
                 host = optarg;
                 break;
 
             case 'f':
+                printf("\nDEBUG::main:main()--> from: %s", optarg);
                 from = optarg;
                 break;
 
             case 's':
+                printf("\nDEBUG::main:main()--> subject: %s", optarg);
                 subject = optarg;
                 break;
 
@@ -104,6 +114,7 @@ main(int argc, char **argv) {
                 break;
 
             case 'm':
+                printf("\nDEBUG::main:main()--> smtp_set_monitorcb");
                 smtp_set_monitorcb(session, monitor_cb, stdout, 1);
                 break;
 
@@ -120,14 +131,17 @@ main(int argc, char **argv) {
 
             case 'd':
                 /* Request MDN sent to the same address as the reverse path */
+                printf("\nDEBUG::main:main()--> smtp_set_header");
                 smtp_set_header(message, "Disposition-Notification-To", NULL, NULL);
                 break;
 
             case 't':
+                printf("\nDEBUG::main:main()--> smtp_starttls_enable");
                 smtp_starttls_enable(session, Starttls_ENABLED);
                 break;
 
             case 'T':
+                printf("\nDEBUG::main:main()--> smtp_starttls_enable");
                 smtp_starttls_enable(session, Starttls_REQUIRED);
                 break;
 
@@ -140,14 +154,17 @@ main(int argc, char **argv) {
                 break;
 
             case TO:
+                printf("\nDEBUG::main:main()--> smtp_set_header(To: %s)", optarg);
                 smtp_set_header(message, "To", NULL, optarg);
                 to_cc_bcc = 1;
                 break;
             case CC:
+                printf("\nDEBUG::main:main()--> smtp_set_header(Cc: %s)", optarg);
                 smtp_set_header(message, "Cc", NULL, optarg);
                 to_cc_bcc = 1;
                 break;
             case BCC:
+                printf("\nDEBUG::main:main()--> smtp_set_header(Bcc: %s)", optarg);
                 smtp_set_header(message, "Bcc", NULL, optarg);
                 to_cc_bcc = 1;
                 break;
@@ -164,7 +181,6 @@ main(int argc, char **argv) {
         exit(2);
     }
 
-    printf("\nDEBUG:::::mail-file:main");
     /* NB.  libESMTP sets timeouts as it progresses through the protocol.
        In addition the remote server might close its socket on a timeout.
        Consequently libESMTP may sometimes try to write to a socket with
@@ -178,6 +194,7 @@ main(int argc, char **argv) {
     /* Set the host running the SMTP server.  LibESMTP has a default port
        number of 587, however this is not widely deployed so the port
        is specified as 25 along with the default MTA host. */
+    printf("\nDEBUG::main:main()--> smtp_set_server(%s)", host ? host : "localhost:25");
     smtp_set_server(session, host ? host : "localhost:25");
 
     /* Do what's needed at application level to use authentication.
@@ -225,7 +242,17 @@ main(int argc, char **argv) {
 
     /* Open the message file and set the callback to read it.
      */
-    file = argv[optind++];
+//    file = argv[optind++];
+    file= "MessageText.txt";
+    strcpy((char *)MessageText, (const char *)MAIL_HEADER);
+    strcat((char *)MessageText, (const char *)MESSAGE_TEXT);
+    
+    printf("\nDEBUG::main:main()--> Create a file");
+    fp= fopen(file, "w");
+    
+    fprintf(fp, MessageText);
+    fclose(fp);
+    
     if (strcmp(file, "-") == 0)
         fp = stdin;
     else if ((fp = fopen(file, "r")) == NULL) {
@@ -258,7 +285,7 @@ main(int argc, char **argv) {
         /* Report on the success or otherwise of the mail transfer.
          */
         status = smtp_message_transfer_status(message);
-        printf("%d %s", status->code,
+        printf("\nDEBUG::main:main()--> %d %s", status->code,
                 (status->text != NULL) ? status->text : "\n");
         smtp_enumerate_recipients(message, print_recipient_status, NULL);
     }

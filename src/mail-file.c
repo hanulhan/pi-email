@@ -57,10 +57,10 @@ print_recipient_status (smtp_recipient_t recipient,
 			const char *mailbox, void *arg unused)
 {
   const smtp_status_t *status;
-  printf("\nDEBUG:::::mail-file:print_recipient_status()");
+  printf("\nDEBUG::mail-file:print_recipient_status() --> Start");
 
   status = smtp_recipient_status (recipient);
-  printf ("\n%s: %d %s", mailbox, status->code, status->text);
+  printf("\nDEBUG::mail-file:print_recipient_status() --> %s: %d %s", mailbox, status->code, status->text);
 }
 
 /* Callback function to read the message from a file.  Since libESMTP
@@ -84,7 +84,7 @@ readlinefp_cb (void **buf, int *len, void *arg)
 {
   int octets;
 
-  printf("\nDEBUG:::::mail-file:readlinefp_cb()");
+  printf("\nDEBUG::mail-file:readlinefp_cb() --> Start");
   if (*buf == NULL)
     *buf = malloc (BUFLEN);
 
@@ -108,6 +108,7 @@ readlinefp_cb (void **buf, int *len, void *arg)
       octets = p - (char *) *buf;
     }
   *len = octets;
+  printf("\nDEBUG::mail-file:readlinefp_cb() --> buf: %s", (char *)*buf);
   return *buf;
 }
 
@@ -116,7 +117,8 @@ monitor_cb (const char *buf, int buflen, int writing, void *arg)
 {
   FILE *fp = arg;
 
-  printf("\nDEBUG:::::mail-file:monitor_cb()");
+  printf("\nDEBUG::mail-file:monitor_cb() --> Start");
+
   if (writing == SMTP_CB_HEADERS)
     {
       fputs ("H: ", fp);
@@ -175,9 +177,9 @@ authinteract (auth_client_request_t request, char **result, int fields,
               void *arg unused)
 {
   UNUSED(request);
-  printf("\nDEBUG:::::mail-file:authinteract()");
+  UNUSED(fields);
+  printf("\nDEBUG::mail-file:authinteract() --> Start");  
 
-  printf("\nDEBUG:::::mail-file:authinteract() Anzahl fields: %d", fields);
   result[0] = "uhansen01";
   result[1] = "ava030374lon_";
   
@@ -191,7 +193,7 @@ tlsinteract (char *buf, int buflen, int rwflag unused, void *arg unused)
   char *pw;
   int len;
 
-  printf("\nDEBUG::tslinteract()");
+  printf("\nDEBUG::mail-file:tlsinteract() --> Start");
   pw = getpass ("certificate password");
   len = strlen (pw);
   if (len + 1 > buflen)
@@ -203,8 +205,7 @@ int
 handle_invalid_peer_certificate(long vfy_result)
 {
   const char *k ="rare error";
-  
-  printf("\nDEBUG::handle_invalid_peer_certificate()");
+  printf("\nDEBUG::mail-file:handle_invalid_peer_certificate() --> Start");
   switch(vfy_result) {
   case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
     k="X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT"; break;
@@ -261,7 +262,7 @@ handle_invalid_peer_certificate(long vfy_result)
   case X509_V_ERR_CERT_REJECTED:
     k="X509_V_ERR_CERT_REJECTED"; break;
   }
-  printf("\nSMTP_EV_INVALID_PEER_CERTIFICATE: %ld: %s\n", vfy_result, k);
+  printf("\nDEBUG::mail-file:handle_invalid_peer_certificate() --> SMTP_EV_INVALID_PEER_CERTIFICATE: %ld: %s\n", vfy_result, k);
   return 1; /* Accept the problem */
 }
 
@@ -270,46 +271,63 @@ void event_cb (smtp_session_t session, int event_no, void *arg,...)
   va_list alist;
   int *ok;
   UNUSED(session);
-  printf("\nDEBUG::event_cb()");
   va_start(alist, arg);
   switch(event_no) {
-  case SMTP_EV_CONNECT: 
+  case SMTP_EV_CONNECT:
+      printf("\nDEBUG::mail-file:event_cb() --> Event SMTP_EV_CONNECT");
+      break;
   case SMTP_EV_MAILSTATUS:
+      printf("\nDEBUG::mail-file:event_cb() --> Event SMTP_EV_MAILSTATUS");
+      break;
   case SMTP_EV_RCPTSTATUS:
+      printf("\nDEBUG::mail-file:event_cb() --> Event SMTP_EV_RCPTSTATUS");
+      break;      
   case SMTP_EV_MESSAGEDATA:
+      printf("\nDEBUG::mail-file:event_cb() --> Event SMTP_EV_MESSAGEDATA");
+      break;
   case SMTP_EV_MESSAGESENT:
-  case SMTP_EV_DISCONNECT: break;
+      printf("\nDEBUG::mail-file:event_cb() --> Event SMTP_EV_MESSAGESENT");
+      break;
+  case SMTP_EV_DISCONNECT:
+      printf("\nDEBUG::mail-file:event_cb() --> Event SMTP_EV_DISCONNECT");
+      break;      
+  
   case SMTP_EV_WEAK_CIPHER: {
     int bits;
+    printf("\nDEBUG::mail-file:event_cb() --> Event SMTP_EV_WEAK_CIPHER, bits=%d - accepted.\n", bits);
     bits = va_arg(alist, long); ok = va_arg(alist, int*);
-    printf("\nSMTP_EV_WEAK_CIPHER, bits=%d - accepted.\n", bits);
     *ok = 1; break;
   }
   case SMTP_EV_STARTTLS_OK:
+    printf("\nDEBUG::mail-file:event_cb() --> Event SMTP_EV_STARTTLS_OK");
     puts("\nSMTP_EV_STARTTLS_OK - TLS started here."); break;
   case SMTP_EV_INVALID_PEER_CERTIFICATE: {
     long vfy_result;
+    printf("\nDEBUG::mail-file:event_cb() --> Event SMTP_EV_INVALID_PEER_CERTIFICATE");
     vfy_result = va_arg(alist, long); ok = va_arg(alist, int*);
     *ok = handle_invalid_peer_certificate(vfy_result);
     break;
   }
   case SMTP_EV_NO_PEER_CERTIFICATE: {
+    printf("\nDEBUG::mail-file:event_cb() --> Event SMTP_EV_NO_PEER_CERTIFICATE");
     ok = va_arg(alist, int*); 
     puts("\nSMTP_EV_NO_PEER_CERTIFICATE - accepted.");
     *ok = 1; break;
   }
   case SMTP_EV_WRONG_PEER_CERTIFICATE: {
+    printf("\nDEBUG::mail-file:event_cb() --> Event SMTP_EV_WRONG_PEER_CERTIFICATE");
     ok = va_arg(alist, int*);
     puts("\nSMTP_EV_WRONG_PEER_CERTIFICATE - accepted.");
     *ok = 1; break;
   }
   case SMTP_EV_NO_CLIENT_CERTIFICATE: {
-    ok = va_arg(alist, int*); 
+    printf("\nDEBUG::mail-file:event_cb() --> Event SMTP_EV_NO_CLIENT_CERTIFICATE");    
+      ok = va_arg(alist, int*); 
     puts("\nSMTP_EV_NO_CLIENT_CERTIFICATE - accepted.");
     *ok = 1; break;
   }
   default:
-    printf("\nGot event: %d - ignored.\n", event_no);
+    printf("\nDEBUG::mail-file:event_cb() --> Got event: %d - ignored.\n", event_no);
   }
   va_end(alist);
 }
@@ -361,6 +379,7 @@ void
 version (void)
 {
   char buf[32];
+  
   printf("\nDEBUG::version()");
 
   smtp_version (buf, sizeof buf, 0);
