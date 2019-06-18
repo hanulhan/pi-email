@@ -2,3 +2,4 @@ pi-email
 MessageText.txt
 obj/*.o
 nbproject
+mail-file*
